@@ -1,0 +1,43 @@
+[project]
+name = "pokemon-team-builder-backend"
+version = "0.1.0"
+description = "Pokemon Team Builder — FastAPI backend"
+requires-python = ">=3.13"
+dependencies = [
+    "fastapi>=0.115",
+    "uvicorn[standard]>=0.32",
+    "sqlalchemy>=2.0",
+    "aiosqlite>=0.20",
+    "httpx>=0.27",
+    "tenacity>=9.0",
+    "pydantic>=2.9",
+    "pydantic-settings>=2.5",
+    "apscheduler>=3.10",
+    "argon2-cffi>=23.1",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.3",
+    "pytest-asyncio>=0.24",
+    "ruff>=0.7",
+]
+
+# Application project, not a distributable package — uv manages the env without a build backend.
+[tool.uv]
+package = false
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+pythonpath = ["."]
+testpaths = ["tests"]
+# Markers split the suite into pure-logic (`unit`) and DB+HTTP (`integration`)
+# axes (ADR-040). Run `pytest -m unit` for sub-second feedback while iterating.
+markers = [
+    "unit: pure-logic tests, no DB and no HTTP (fast)",
+    "integration: real DB + real HTTP wiring via TestClient",
+]
+
+[tool.ruff]
+line-length = 88
+target-version = "py313"

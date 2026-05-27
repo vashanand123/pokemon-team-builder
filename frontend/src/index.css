@@ -1,0 +1,12 @@
+@import "tailwindcss";
+@plugin "@tailwindcss/forms";
+
+/* Use Inter as the default sans (loaded in index.html); falls back gracefully offline. */
+@theme {
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+}
+
+body {
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}

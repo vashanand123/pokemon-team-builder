@@ -1,0 +1,26 @@
+services:
+  backend:
+    build: ./backend
+    environment:
+      # SQLite on a named volume so teams persist across container restarts.
+      DATABASE_URL: "sqlite+aiosqlite:////data/pokemon.db"
+    volumes:
+      - dbdata:/data
+    expose:
+      - "8000"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/healthz')"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+
+  frontend:
+    build: ./frontend
+    ports:
+      - "8080:80"
+    depends_on:
+      backend:
+        condition: service_healthy
+
+volumes:
+  dbdata:
