@@ -288,35 +288,37 @@ class GeneticCounterStrategy:
         return best, breakdown(self._chart, best, opponent)
 
     def autofill(
-        self, current: list[Pokemon], pool: list[Pokemon], size: int = 6
+        self,
+        current: list[Pokemon],
+        pool: list[Pokemon],
+        size: int = 6,
+        rng: random.Random | None = None,
     ) -> list[Pokemon]:
-        """Fill empty slots with the strongest non-type-overlapping Pokémon.
+        """Fill empty slots with a random, type-diverse selection from the pool.
 
-        **Deliberately uses the STRICT type rule** (no shared types at all),
-        not the ADR-043 soft rule the validators use — autofill's value
-        proposition is "complete my team with type *variety*", so suggesting
-        Pidgeot when Charizard is already on the team would be UX malpractice
-        even if the post-ADR-043 save validator would accept it. Unrelated to
-        the counter objective; it's the team-builder's "complete my team"
-        helper.
+        No optimization — autofill's job is "give me a diverse team to play
+        with," not "find the strongest team." Same call returns a *different*
+        six on each click because the caller passes a fresh RNG per request.
+        Uses the same shape as the GA's `_random_team` (shuffle pool, walk,
+        admit non-clashing) just with the **strict** type-overlap rule (ADR-043
+        carve-out — autofill's value proposition is type *variety*, so two
+        members sharing any type would defeat its purpose, even though the
+        ADR-043 save validators allow shared-single-type-different-set teams).
         """
+        rng = rng or random.Random()
         team = list(current)
         chosen = {m.id for m in current}
         used_types = {t for m in current for t in m.types}
         added: list[Pokemon] = []
-        while len(team) < size:
-            best: Pokemon | None = None
-            best_key: tuple[int, int] | None = None
-            for cand in pool:
-                if cand.id in chosen or (set(cand.types) & used_types):
-                    continue
-                key = (len(cand.types), cand.bst)  # prefer more new types, then stronger
-                if best_key is None or key > best_key:
-                    best_key, best = key, cand
-            if best is None:  # no non-overlapping candidate remains
+        shuffled = list(pool)
+        rng.shuffle(shuffled)
+        for cand in shuffled:
+            if len(team) >= size:
                 break
-            team.append(best)
-            chosen.add(best.id)
-            used_types |= set(best.types)
-            added.append(best)
+            if cand.id in chosen or (set(cand.types) & used_types):
+                continue
+            team.append(cand)
+            chosen.add(cand.id)
+            used_types |= set(cand.types)
+            added.append(cand)
         return added

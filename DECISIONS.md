@@ -328,3 +328,21 @@ User teams enforce the same type-diversity rule as counter teams via `_validate_
 **Human-in-the-loop.** Reviewer: *"make the typing barrier less strict … dragon flying and dragon ice would be fine."*
 
 New `has_duplicate_type_sets` predicate — Charizard (fire/flying) + Pidgeot (normal/flying) are now allowed on the same team (different sets, shared single type is fine); Bulbasaur + Ivysaur (both grass/poison) is still rejected. Used by the team/counter save validators and the GA's operators. **Autofill deliberately keeps the strict `has_overlapping_types` rule** (its job is "complete my team with type *variety*"); a pinning test prevents a future "consolidate the rule" refactor from flipping it. Matches real competitive teams, grows the search space, mostly retires the V-25 fitness gap.
+
+---
+
+## ADR-044 — Alert dismissal persistence: localStorage, per-user, by timestamp
+**Status:** Accepted
+
+**Human-in-the-loop.** Reviewer: *"when the change alerter loads up, even if you close it out its persistent, meaning once you reload the page it stays."*
+
+The dismiss state was `useState(false)` — component-local, lost on remount/reload, so closing the banner did nothing past the next refresh. Fixed client-side via `localStorage.setItem('ptb_alerts_dismissed_until:<userId>', isoTimestamp)`. The banner filters `alerts.filter(a => a.detected_at > dismissedUntil)` so a *new* alert (a fresh `simulate-change` with a later `detected_at`) re-opens the banner naturally, while previously-seen alerts stay hidden. The key is scoped by user id so logging out and signing in as someone else doesn't inherit dismissals (per-user feed → per-user dismiss state). The stored mark is the **max `detected_at`** of the currently-visible alerts, not `Date.now()`, so a server-clock-ahead-of-client edge case can't silently hide a future alert. Chose localStorage over a server-side `dismissed_at` column because (a) the dismissal is per-browser semantics already and (b) the schema cost (a `user_alert_dismissals(user_id, change_event_id, dismissed_at)` table since one event affects many users) wasn't worth it for this size. Documented next step if it ever matters: lift to server-side per-user dismissals.
+
+---
+
+## ADR-045 — Autofill: pure random over the strict-type pool (no BST / dual-type preference)
+**Status:** Accepted (reverses the "strongest non-overlapping" framing inherited from ADR-008, for the autofill helper only)
+
+**Human-in-the-loop.** Reviewer: *"the auto team creator seems to choose the same teams or the same types of pokemon frequently … isn't it better to just randomly sort and pick pokemon arbitrarily accounting for type sameness this way you can get variety creating a team isn't about winning its just about getting a diverse team?"*
+
+Autofill was a deterministic greedy argmax over `(num_types, bst)` — always picked dual-types over mono-types, then the highest-BST among them. Same starting team → same six Pokémon every click. The reviewer's point lands: autofill is a *team-builder helper*, not an optimizer — its job is "give me a diverse team to play with," not "find the strongest team." Rewrote it as **shuffle pool with a fresh per-request `random.Random()` → walk → admit first non-clashing candidate → repeat to 6**. Same shape as the GA's `_random_team` initial-population builder, just using the strict type rule (no shared types at all — the ADR-043 carve-out for autofill is preserved) instead of the GA's soft rule. Same RNG-per-request pattern the counter endpoint already uses. Result: real variety across clicks (Bulbasaur and Eternatus are now equally likely), much smaller code, the pinning test (`test_autofill_never_overlaps_types_strict_rule_preserved`) still passes because it asserts on set-equality of the resulting ids — not on the order or strength of picks.

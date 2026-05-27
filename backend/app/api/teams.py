@@ -1,3 +1,5 @@
+import random
+
 from fastapi import APIRouter, Depends, HTTPException
 
 from app.api.deps import (
@@ -137,15 +139,16 @@ async def autofill_team(
     strategy=Depends(get_counter_strategy),
 ):
     """`POST /api/teams/{id}/autofill` — fill the team's empty slots with the strongest
-    Pokémon whose types don't overlap any current member's (greedy: prefers dual-types,
-    then highest BST). Unrelated to the counter algorithm — `strategy.autofill` is a
-    separate helper. Returns the updated team."""
+    Pokémon whose types don't overlap any current member's. Random — no BST or
+    dual-type preference — so each click produces a different diverse team
+    (autofill is a "give me variety" helper, not an optimizer). Unrelated to
+    the counter algorithm. Returns the updated team."""
     team = await repo.get_for_user(team_id, user.id)
     if team is None:
         raise HTTPException(status_code=404, detail="Team not found")
     current = [m.pokemon for m in team.members]  # already business Pokemon (ADR-037)
     pool = await pokemon_repo.get_base_species_pool()
-    added = strategy.autofill(current, pool, size=6)
+    added = strategy.autofill(current, pool, size=6, rng=random.Random())
     new_ids = [m.pokemon.id for m in team.members] + [p.id for p in added]
     updated = await repo.update(team_id, user.id, member_ids=new_ids)
     assert updated is not None  # we just fetched it above
