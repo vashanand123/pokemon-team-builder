@@ -1,8 +1,7 @@
 """Business `User` — the authenticated identity routers pass around (ADR-039/041).
 
 Adapters (`SqlAuthRepository`) translate `UserRow` into this; nothing else in
-the app should know about `UserRow` or the password hash column. `is_admin` is
-exposed so future admin gates can be a one-line check on the business object.
+the app should know about `UserRow` or the password hash column.
 
 Username (not email) is the identifier — see ADR-041 for the rationale.
 """
@@ -20,5 +19,4 @@ class User:
 
     id: str
     username: str
-    is_admin: bool
     created_at: datetime

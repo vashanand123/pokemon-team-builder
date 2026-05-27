@@ -8,7 +8,6 @@ import { fetchJson, HttpError, mutateJson } from './client'
 export type User = {
   id: string
   username: string
-  is_admin: boolean
   created_at: string
 }
 

@@ -291,7 +291,7 @@ ORM classes suffixed `*Row` (`PokemonRow`, `TeamRow`, `UserRow`, …). Each adap
 
 **Human-in-the-loop.** Reviewer: *"Add a simple username and pw login."*
 
-`UserRow` gets `email`/`password_hash`/`is_admin` (later `email`→`username` per ADR-041). New `SessionRow` — the row's PK *is* the cookie token. Argon2id via `argon2-cffi`. `POST /api/auth/{signup,login,logout}` + `GET /api/auth/me`. Wrong-pw and unknown-user return identical 401 detail (no existence oracle). Catalog stays public. The hasher and session store are both behind `deps.py` providers — bcrypt or a Redis-backed store are one-line swaps; OAuth/OIDC slots in behind a different `get_current_user`.
+`UserRow` gets `email`/`password_hash` (later `email`→`username` per ADR-041). New `SessionRow` — the row's PK *is* the cookie token. Argon2id via `argon2-cffi`. `POST /api/auth/{signup,login,logout}` + `GET /api/auth/me`. Wrong-pw and unknown-user return identical 401 detail (no existence oracle). Catalog stays public. The hasher and session store are both behind `deps.py` providers — bcrypt or a Redis-backed store are one-line swaps; OAuth/OIDC slots in behind a different `get_current_user`. (An `is_admin` placeholder column was also added here; removed in ADR-046 as dead weight.)
 
 ---
 
@@ -346,3 +346,12 @@ The dismiss state was `useState(false)` — component-local, lost on remount/rel
 **Human-in-the-loop.** Reviewer: *"the auto team creator seems to choose the same teams or the same types of pokemon frequently … isn't it better to just randomly sort and pick pokemon arbitrarily accounting for type sameness this way you can get variety creating a team isn't about winning its just about getting a diverse team?"*
 
 Autofill was a deterministic greedy argmax over `(num_types, bst)` — always picked dual-types over mono-types, then the highest-BST among them. Same starting team → same six Pokémon every click. The reviewer's point lands: autofill is a *team-builder helper*, not an optimizer — its job is "give me a diverse team to play with," not "find the strongest team." Rewrote it as **shuffle pool with a fresh per-request `random.Random()` → walk → admit first non-clashing candidate → repeat to 6**. Same shape as the GA's `_random_team` initial-population builder, just using the strict type rule (no shared types at all — the ADR-043 carve-out for autofill is preserved) instead of the GA's soft rule. Same RNG-per-request pattern the counter endpoint already uses. Result: real variety across clicks (Bulbasaur and Eternatus are now equally likely), much smaller code, the pinning test (`test_autofill_never_overlaps_types_strict_rule_preserved`) still passes because it asserts on set-equality of the resulting ids — not on the order or strength of picks.
+
+---
+
+## ADR-046 — Drop the `is_admin` placeholder column (no admin role)
+**Status:** Accepted (reverses the `is_admin` part of ADR-039)
+
+**Human-in-the-loop.** Reviewer: *"is admin? there is no admin account is there?"* — caught that `is_admin` was a forward-looking column nobody could set to True and no code read to make a decision. The README's "placeholder for a future `Depends` gate" claim was technically true but practically vacuous: the column existed, defaulted to `False` on every user, and the `/admin/*` endpoints (ADR-016) ignored it entirely.
+
+Dropped `is_admin` from `UserRow`, from the business `User` dataclass, from `UserOut`, from `_to_business`, from the frontend `User` type, and the one test assertion that referenced it. README + ADR-039 in-line mentions updated. The `/admin/*` endpoints remain unauthenticated for the demo (still ADR-016); the README now says that honestly instead of suggesting a placeholder gate exists. When a real admin role lands, it should come back as a proper role model (e.g. a `roles` table with many-to-many, or an `is_admin` column with an actual `Depends(require_admin)` gate AND a bootstrap script to elevate a user) — not just a column that's always False with no code path to flip it. **Schema impact:** the `users.is_admin` column will still exist in any existing SQLite file (SQLite + `create_all` doesn't drop columns); it's harmless dead data until a `docker compose down -v` (or `rm pokemon.db*`) recreates the schema.

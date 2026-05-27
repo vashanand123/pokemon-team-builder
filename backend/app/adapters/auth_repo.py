@@ -36,7 +36,6 @@ def _to_business(row: UserRow) -> User:
     return User(
         id=row.id,
         username=row.username,
-        is_admin=row.is_admin,
         created_at=row.created_at,
     )
 

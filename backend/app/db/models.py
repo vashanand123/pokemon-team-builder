@@ -46,9 +46,8 @@ class UserRow(Base):
     Replaces the Phase-1 anonymous-cookie identity: every user must sign up before
     they can create anything. Username (not email) is deliberate — the project is a
     take-home demo where reviewers want to spin up multiple throwaway accounts on
-    the spot without owning N inboxes (ADR-041). `is_admin` is a placeholder for a
-    future admin-page gate (the `/admin/*` endpoints stay open for dev convenience
-    for now, per the plan's open-scope notes).
+    the spot without owning N inboxes (ADR-041). The `/admin/*` endpoints are
+    deliberately unauthenticated for the demo (ADR-016); no admin role exists.
     """
 
     __tablename__ = "users"
@@ -56,7 +55,6 @@ class UserRow(Base):
     id: Mapped[str] = mapped_column(String, primary_key=True, default=_uuid)
     username: Mapped[str] = mapped_column(String, unique=True, index=True)
     password_hash: Mapped[str] = mapped_column(String)
-    is_admin: Mapped[bool] = mapped_column(default=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
 
     teams: Mapped[list[TeamRow]] = relationship(

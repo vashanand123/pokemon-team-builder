@@ -213,5 +213,4 @@ class UserOut(BaseModel):
 
     id: str
     username: str
-    is_admin: bool
     created_at: datetime

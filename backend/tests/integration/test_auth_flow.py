@@ -19,7 +19,6 @@ def test_signup_logs_in_and_me_returns_the_user(api_client):
     assert r.status_code == 201
     body = r.json()
     assert body["username"] == USERNAME
-    assert body["is_admin"] is False
     # The cookie set by signup is enough to read /me without sending creds.
     me = api_client.get("/api/auth/me")
     assert me.status_code == 200

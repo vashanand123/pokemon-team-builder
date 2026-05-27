@@ -159,8 +159,11 @@ auto-fill → counter team → simulate change → alert banner.
 - **SQLite + in-process scheduler** — right for a local, single-process deployment; see
   DECISIONS.md ADR-009 for the Postgres / external-worker path at scale.
 - **Resource caps** — 20 teams per user, 6 members per team, up to 10 saved counters per source
-  team. Rate limiting and admin auth (`is_admin` is a placeholder column, ready for a `Depends`
-  gate) are documented as deployment hardening (ADR-026 / ADR-016).
+  team. Rate limiting is documented as deployment hardening (ADR-026).
+- **No admin role** — `/admin/scan-changes` and `/admin/simulate-change` are intentionally
+  unauthenticated for the local demo (ADR-016). There is no `is_admin` column and no admin user;
+  if/when those endpoints need gating, the path is a real role model + `Depends(require_admin)`,
+  not a single-bit column (ADR-046).
 - **Change-scan load** — hourly, ~1,300 PokéAPI fetches with bounded concurrency + tenacity
   backoff; fine for one instance. A rolling slice (oldest-`fetched_at` first, plus
   always-team-members) is the named next step (ADR-036).
